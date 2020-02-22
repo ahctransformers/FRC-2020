@@ -38,6 +38,8 @@ public class Robot extends TimedRobot {
   private Encoder leftEncoder;
   private Encoder rightEncoder; 
   private Spark m_Climber = new Spark (RobotMap.CLIMBER_MOTOR) ; 
+  private boolean autoDone;
+  private double leftPower, rightPower ; 
   XboxController xbox; 
   XboxController ltech;  
   Spark m_frontLeft = new Spark(RobotMap.FRONT_LEFT_MOTOR);
@@ -133,10 +135,29 @@ public class Robot extends TimedRobot {
   public void autonomousInit() {
     m_timer.reset();
     m_timer.start();
+    leftPower = 0.20;
+    m_left.set(leftPower);
+    rightPower = 0.20;
+    m_right.set(rightPower);
+    autoDone=false;
     m_autoSelected = m_chooser.getSelected();
     // m_autoSelected = SmartDashboard.getString("Auto Selector", kDefaultAuto);
     System.out.println("Auto selected: " + m_autoSelected);
+    m_Arm.set(-.5);
+    Timer.delay(2);
+    m_Arm.set(.5);
+    Timer.delay(2);
+    
   }
+ public void driveStraight () {
+  double error = leftEncoder.getDistance() - rightEncoder.getDistance();
+  double kP = 0.005; 
+  leftPower -= kP*error;
+  rightPower += kP*error; 
+  m_left.set(leftPower);
+  m_right.set(rightPower);
+ }
+
 
   /**
    * This function is called periodically during autonomous.
@@ -153,10 +174,10 @@ public class Robot extends TimedRobot {
         m_robotDrive.arcadeDrive(.5,0);
       } else {
         m_robotDrive.stopMotor();
-        m_Arm.set(-.5);
+       /* m_Arm.set(-.5);
         Timer.delay(2);
         m_Arm.set(.5);
-        Timer.delay(2);
+        Timer.delay(2); */
         m_Intake.set(-0.5); 
       }
        
@@ -184,13 +205,25 @@ public class Robot extends TimedRobot {
 
       case DRIVE_ONLY:     //kDefaultAuto:
       default:
-      if (rightdistance < 24) { 
+      if (!autoDone) {
+        if (m_timer.hasPeriodPassed(0.125)) {
+          driveStraight();
+        }
+        if ((leftEncoder.getDistance() > 24.0) ||
+          (rightEncoder.getDistance() > 24.0)) {
+            m_left.stopMotor();
+            m_right.stopMotor(); 
+            autoDone = true; 
+          }
+        }
+      
+      /*if (rightdistance < 24) { 
         m_robotDrive.arcadeDrive(.5 , 0); // drive forwards half speed
         } else {
           m_robotDrive.stopMotor(); // stop robot
-        }
+        }*/
       break;
-      }
+    }
   }
 
   /**
