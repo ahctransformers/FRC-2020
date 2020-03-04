@@ -9,6 +9,7 @@ public class RobotMap{
     public static int INTAKE_MOTOR = 3;
     public static int ARM_MOTOR = 7; 
     public static int CLIMBER_MOTOR = 0;
+    public static int SPINNER_MOTOR = 5; //added 2/27/2020 LMC
 
     // Roborio  DIO Ports 
     public static int LEFT_ENCODER_A = 4;

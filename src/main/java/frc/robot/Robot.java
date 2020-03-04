@@ -38,7 +38,10 @@ public class Robot extends TimedRobot {
   private Encoder leftEncoder;
   private Encoder rightEncoder; 
   private Spark m_Climber = new Spark (RobotMap.CLIMBER_MOTOR) ; 
+  private Spark m_Spinner = new Spark (RobotMap.SPINNER_MOTOR) ;  //added 2/27/2020 LMC
   private boolean autoDone;
+  private double rightStart; 
+  private double leftStart;
   private double leftPower, rightPower ; 
   XboxController xbox; 
   XboxController ltech;  
@@ -89,10 +92,10 @@ public class Robot extends TimedRobot {
     CameraServer.getInstance().startAutomaticCapture(RobotMap.CAMERA_SERVER_2);
     leftEncoder = new Encoder  (RobotMap.LEFT_ENCODER_A, RobotMap.LEFT_ENCODER_B, true); //reverses left direction
     leftEncoder.setDistancePerPulse((3.141592*6)/360);
-    leftEncoder.reset();
+  //  leftEncoder.reset();
     rightEncoder = new Encoder (RobotMap.RIGHT_ENDOCER_A, RobotMap.RIGHT_ENCODER_B) ; 
     rightEncoder.setDistancePerPulse((3.141592*6)/360); 
-    rightEncoder.reset();
+  //  rightEncoder.reset();
   }
 
   /**
@@ -135,27 +138,40 @@ public class Robot extends TimedRobot {
   public void autonomousInit() {
     m_timer.reset();
     m_timer.start();
-    leftPower = 0.20;
+    leftPower = 0.50;
     m_left.set(leftPower);
-    rightPower = 0.20;
+    rightPower = 0.50;
     m_right.set(rightPower);
     autoDone=false;
+
+    //reset the encoders and get the starting positions
+    // [[starting position necessary after all?? seem to be resetting to 0 now]]
+    leftEncoder.reset();
+    rightEncoder.reset();
+    rightStart = rightEncoder.getDistance(); 
+    leftStart = leftEncoder.getDistance();
+    System.out.print("RS" + rightStart + " LS" + leftStart + "\n");
+
+    //select the auto mode
     m_autoSelected = m_chooser.getSelected();
-    // m_autoSelected = SmartDashboard.getString("Auto Selector", kDefaultAuto);
     System.out.println("Auto selected: " + m_autoSelected);
+
+    //position arm to game position
     m_Arm.set(-.5);
-    Timer.delay(2);
+    Timer.delay(.5);
     m_Arm.set(.5);
-    Timer.delay(2);
+    Timer.delay(.5);
     
   }
  public void driveStraight () {
-  double error = leftEncoder.getDistance() - rightEncoder.getDistance();
+  /****** 
+  double error = leftdistance - rightdistance;
   double kP = 0.005; 
   leftPower -= kP*error;
   rightPower += kP*error; 
   m_left.set(leftPower);
   m_right.set(rightPower);
+  ******/
  }
 
 
@@ -165,8 +181,9 @@ public class Robot extends TimedRobot {
   @Override
   public void autonomousPeriodic() {
 
-    double rightdistance = rightEncoder.getDistance();
-   // double leftdistance = leftEncoder.getDistance();
+    double rightdistance = Math.abs(rightEncoder.getDistance() - rightStart);
+    double leftdistance = Math.abs(leftEncoder.getDistance() - leftStart);
+    System.out.println("LE" + leftEncoder.getDistance() + " LD" + leftdistance + " RE" + rightEncoder.getDistance() + " RD" + rightdistance + "\n" );
 
     switch (m_autoSelected) {
       case DRIVE_PUSH:    //kCustomAuto:
@@ -193,7 +210,7 @@ public class Robot extends TimedRobot {
         break;
       
       case DRIVE_TURN:
-      if (rightdistance < 24) {
+      if (rightdistance  - rightStart < 24) {
         m_robotDrive.arcadeDrive(.5,0);
       } else if (rightdistance < 30) {
           m_robotDrive.arcadeDrive(.5,.2);
@@ -205,26 +222,71 @@ public class Robot extends TimedRobot {
 
       case DRIVE_ONLY:     //kDefaultAuto:
       default:
+ /*     
       if (!autoDone) {
         if (m_timer.hasPeriodPassed(0.125)) {
-          driveStraight();
+//          driveStraight();
+            double error = leftdistance - rightdistance;
+            System.out.print(leftdistance + "R" + rightdistance + "E" + error + "LP" + leftPower + "RP" + rightPower);
+            double kP = 0.005; 
+            leftPower -= kP*error;
+            rightPower += kP*error; 
+            m_left.set(leftPower);
+            m_right.set(rightPower);
         }
-        if ((leftEncoder.getDistance() > 24.0) ||
-          (rightEncoder.getDistance() > 24.0)) {
+        if (leftdistance > 24.0 || rightdistance > 24.0) {
             m_left.stopMotor();
             m_right.stopMotor(); 
             autoDone = true; 
           }
         }
-      
-      /*if (rightdistance < 24) { 
+   */   
+      if (rightdistance < 12) { 
         m_robotDrive.arcadeDrive(.5 , 0); // drive forwards half speed
         } else {
           m_robotDrive.stopMotor(); // stop robot
-        }*/
+        }
+        
       break;
     }
   }
+
+
+  /******************************************************************/
+  /******************************************************************/
+  /* code to get the color string:
+  1) do we need to get it all the time or just when we want to spin?
+  2) can we put a note on the driver station?
+  3) should it be in a function and return the value  OR
+               be in a function and actually do the spinning?
+  4) or just go ahead and put all in the teleopPeriodic?
+
+  String gameData;
+  gameData = DriverStation.getInstance().getGameSpecificMessage();
+  if (gameData.length() > 0)
+  {
+    switch (gameData.charAt(0))
+    {
+      case 'B':
+        //blue case code
+        break;
+      case 'G':
+        //green case code
+        break;
+      case 'R':
+        //red case code
+        break;
+      case 'Y':
+        //yellow case code
+        break;
+      default:
+        //this is corrupt data
+        break;
+    }
+  } else {
+      // code for no data received yet
+  }
+
 
   /**
    * This function is called periodically during operator control.
@@ -232,18 +294,24 @@ public class Robot extends TimedRobot {
   @Override
   public void teleopPeriodic() {
     m_robotDrive.arcadeDrive( -1* xbox.getY(Hand.kLeft),  xbox.getX(Hand.kLeft));
+
+    //INTAKE: LTECH BUMPER
+
     if (ltech.getBumperPressed (Hand.kLeft)) {
-      m_Intake.set(1) ; 
+      m_Intake.set(.8) ; 
     }
     if (ltech.getBumperReleased (Hand.kLeft)) {
      m_Intake.set(0) ; 
     }
     if (ltech.getBumperPressed (Hand.kRight)) {
-      m_Intake.set(-1) ;
+      m_Intake.set(-.8) ;
     }
     if (ltech.getBumperReleased (Hand.kRight)) {
       m_Intake.set(0) ; 
     }
+
+    //CLIMBER: XBOX A, Y, X
+
     if (xbox.getAButtonPressed ()) {
       m_Climber.set(-0.60) ;
     }
@@ -262,20 +330,44 @@ public class Robot extends TimedRobot {
     if (xbox.getXButtonReleased ()) {
       m_Climber.set(0) ; 
     }
-
+   
+    //ARM: LTECH Y AND A
+    // ***NOTE for some reason, BButton is responding to the actual A button *** //
     //Logitech Y and A buttons for raising and lowering arm  
+    
     if (ltech.getYButtonPressed()) {
-      m_Arm.set(0.5);
+      m_Arm.set(0.4);
     }
     if (ltech.getYButtonReleased()) {
       m_Arm.set(0); 
     }
+    // When originally had A button code, A did not respond on controller...the Bcode is responding to A button
     if (ltech.getBButtonPressed()) {
       m_Arm.set(-0.5);
     }
-    if (ltech.getBButtonReleased()) {       // When originally had A button code, A did not respond on controller
+    if (ltech.getBButtonReleased()) {       
       m_Arm.set(0);  
     }
+
+    //SPINNER: LTECH X AND B   . . .  X for program, B for operator control
+    // ***NOTE equally annoying, AButton is responding for B Button 
+
+    if (ltech.getXButtonPressed()) { //added 2/27/2020  
+      m_Spinner.set(0.15) ;
+      Timer.delay(2);
+      m_Spinner.set(0);
+    }
+    /** 
+    if (ltech.getXButtonReleased()) {
+      m_Spinner.set(0) ; 
+    */
+    if (ltech.getAButtonPressed()) {
+      m_Spinner.set(0.15) ; 
+    }
+    if (ltech.getAButtonReleased()) {
+      m_Spinner.set(0); 
+    }
+
 
     // Couldn't get Logitech trigger button to work the same as xbox  so we swtiched to Y and A button , left code in case we wanted to go back to xbox controller
     /*
@@ -293,7 +385,7 @@ public class Robot extends TimedRobot {
     if (ltech.getTriggerAxis (Hand.kRight) >= 0.9) {
       m_Arm.set(-0.5) ;
     }
-*/
+    */
     
   }
 
