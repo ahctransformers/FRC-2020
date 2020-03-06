@@ -12,7 +12,6 @@ import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.XboxController; 
 import edu.wpi.first.wpilibj.GenericHID.Hand; 
-//import edu.wpi.first.wpilibj.PWMVictorSPX;
 import edu.wpi.first.wpilibj.Spark;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
@@ -86,16 +85,16 @@ public class Robot extends TimedRobot {
     m_chooser.addOption("Drive Drop", DRIVE_DROP);
   SmartDashboard.putData("Auto choices", m_chooser);
    // m_right.setInverted(true); //### LMC: invert the right motor on test bed ###m_right.setInverted(true); //### LMC: invert the right motor on test bed ###
-    xbox  =  new XboxController (1);
-    ltech = new XboxController (0);
+    xbox  =  new XboxController (0);
+    ltech = new XboxController (1);
     CameraServer.getInstance().startAutomaticCapture(RobotMap.CAMERA_SERVER_1);
     CameraServer.getInstance().startAutomaticCapture(RobotMap.CAMERA_SERVER_2);
     leftEncoder = new Encoder  (RobotMap.LEFT_ENCODER_A, RobotMap.LEFT_ENCODER_B, true); //reverses left direction
     leftEncoder.setDistancePerPulse((3.141592*6)/360);
-  //  leftEncoder.reset();
+    leftEncoder.reset();
     rightEncoder = new Encoder (RobotMap.RIGHT_ENDOCER_A, RobotMap.RIGHT_ENCODER_B) ; 
     rightEncoder.setDistancePerPulse((3.141592*6)/360); 
-  //  rightEncoder.reset();
+    rightEncoder.reset();
   }
 
   /**
@@ -138,9 +137,9 @@ public class Robot extends TimedRobot {
   public void autonomousInit() {
     m_timer.reset();
     m_timer.start();
-    leftPower = 0.50;
+    leftPower = 0.64;
     m_left.set(leftPower);
-    rightPower = 0.50;
+    rightPower = -0.50;
     m_right.set(rightPower);
     autoDone=false;
 
@@ -150,11 +149,9 @@ public class Robot extends TimedRobot {
     rightEncoder.reset();
     rightStart = rightEncoder.getDistance(); 
     leftStart = leftEncoder.getDistance();
-    System.out.print("RS" + rightStart + " LS" + leftStart + "\n");
 
     //select the auto mode
     m_autoSelected = m_chooser.getSelected();
-    System.out.println("Auto selected: " + m_autoSelected);
 
     //position arm to game position
     m_Arm.set(-.5);
@@ -183,31 +180,25 @@ public class Robot extends TimedRobot {
 
     double rightdistance = Math.abs(rightEncoder.getDistance() - rightStart);
     double leftdistance = Math.abs(leftEncoder.getDistance() - leftStart);
-    System.out.println("LE" + leftEncoder.getDistance() + " LD" + leftdistance + " RE" + rightEncoder.getDistance() + " RD" + rightdistance + "\n" );
+    //System.out.println("LE" + leftEncoder.getDistance() + " LD" + leftdistance + " RE" + rightEncoder.getDistance() + " RD" + rightdistance + "\n" );
 
     switch (m_autoSelected) {
-      case DRIVE_PUSH:    //kCustomAuto:
-      if (rightdistance  < 120) { 
-        m_robotDrive.arcadeDrive(.5,0);
-      } else {
-        m_robotDrive.stopMotor();
-       /* m_Arm.set(-.5);
-        Timer.delay(2);
-        m_Arm.set(.5);
-        Timer.delay(2); */
-        m_Intake.set(-0.5); 
+      case DRIVE_PUSH:    //drive and push balls in
+      if (leftdistance > 100.0 || rightdistance > 100.0) {
+          m_left.stopMotor();
+          m_right.stopMotor();
+          m_Intake.set(-0.5); 
       }
-       
-        break;
+      break;
 
       case DRIVE_DROP:
       if (rightdistance < 12) {
         m_robotDrive.arcadeDrive(.4 , 0 ); 
-        } else {
-          m_robotDrive.stopMotor(); // stop robot
-          m_Intake.set(-0.5);
-        }
-        break;
+      } else {
+        m_robotDrive.stopMotor(); // stop robot
+        m_Intake.set(-0.5);
+      }
+      break;
       
       case DRIVE_TURN:
       if (rightdistance  - rightStart < 24) {
@@ -222,30 +213,32 @@ public class Robot extends TimedRobot {
 
       case DRIVE_ONLY:     //kDefaultAuto:
       default:
- /*     
+      
       if (!autoDone) {
         if (m_timer.hasPeriodPassed(0.125)) {
 //          driveStraight();
-            double error = leftdistance - rightdistance;
-            System.out.print(leftdistance + "R" + rightdistance + "E" + error + "LP" + leftPower + "RP" + rightPower);
-            double kP = 0.005; 
-            leftPower -= kP*error;
-            rightPower += kP*error; 
+////            double error = leftdistance - rightdistance;
+//            System.out.print(leftdistance + "R" + rightdistance + "E" + error + "LP" + leftPower + "RP" + rightPower);
+////            double kP = 0.005; 
+////            leftPower -= kP*error;
+//            rightPower += kP*error; 
+//            rightPower -= kP*error;
+////            rightPower = (-1*rightPower - kP*error)*-1;
             m_left.set(leftPower);
             m_right.set(rightPower);
         }
-        if (leftdistance > 24.0 || rightdistance > 24.0) {
+        if (leftdistance > 36.0 || rightdistance > 36.0) {
             m_left.stopMotor();
             m_right.stopMotor(); 
             autoDone = true; 
           }
         }
-   */   
-      if (rightdistance < 12) { 
-        m_robotDrive.arcadeDrive(.5 , 0); // drive forwards half speed
-        } else {
-          m_robotDrive.stopMotor(); // stop robot
-        }
+      
+ //     if (rightdistance < 24) { 
+ //       m_robotDrive.arcadeDrive(.5 , 0); // drive forwards half speed
+ //       } else {
+ //         m_robotDrive.stopMotor(); // stop robot
+ //       }
         
       break;
     }
@@ -293,7 +286,11 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void teleopPeriodic() {
+    //DRIVE: XBOX LEFT TOGGLE
     m_robotDrive.arcadeDrive( -1* xbox.getY(Hand.kLeft),  xbox.getX(Hand.kLeft));
+
+    //SLOW MOTION: XBOX RIGHT TOGGLE
+    m_robotDrive.arcadeDrive( -.5 * xbox.getY(Hand.kLeft),  .5 * xbox.getX(Hand.kLeft));
 
     //INTAKE: LTECH BUMPER
 
@@ -353,7 +350,7 @@ public class Robot extends TimedRobot {
     // ***NOTE equally annoying, AButton is responding for B Button 
 
     if (ltech.getXButtonPressed()) { //added 2/27/2020  
-      m_Spinner.set(0.15) ;
+      m_Spinner.set(0.25) ;
       Timer.delay(2);
       m_Spinner.set(0);
     }
@@ -362,7 +359,7 @@ public class Robot extends TimedRobot {
       m_Spinner.set(0) ; 
     */
     if (ltech.getAButtonPressed()) {
-      m_Spinner.set(0.15) ; 
+      m_Spinner.set(0.25) ; 
     }
     if (ltech.getAButtonReleased()) {
       m_Spinner.set(0); 
